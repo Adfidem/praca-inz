@@ -259,8 +259,13 @@ class param:
         return math.sqrt(r*r)
     def speed(self):
         return math.sqrt(self.orbited_body.mu()*(2/self.distance_from_orbited_body()-1/self.semi_major_axis_lengtht()))
+        
     def velocity_vector(self):
-        return odeint()
+        position = self.position_vector()
+        newvector = vector(position.x/(self.semi_major_axis_lengtht()**2), position.y/(self.semi_minor_axis_lengtht()**2), position.y/(self.semi_minor_axis_lengtht()**2))
+        print(newvector*newvector , "i")
+        print(newvector.x*self.speed(), newvector.y*self.speed(), newvector.z*self.speed(), "v")
+        return 0
         #return vector(0, math.sqrt(2*Sun.mu()*self.apoapsis/(self.periapsis*(self.apoapsis+self.periapsis))) ,0)#correct mu (and everything else xd)
 
 
@@ -282,6 +287,7 @@ asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, Sun, 202
 asteroid_1996FG3.time(30,45,14,12,5,2004)
 print(math.degrees(asteroid_1996FG3.azimuth_angle()), "deg")
 print(asteroid_1996FG3.position_vector())
+Earth.velocity_vector()
 
 
 
