@@ -262,9 +262,12 @@ class param:
         
     def velocity_vector(self):
         position = self.position_vector()
-        newvector = vector(position.x/(self.semi_major_axis_lengtht()**2), position.y/(self.semi_minor_axis_lengtht()**2), position.y/(self.semi_minor_axis_lengtht()**2))
-        print(newvector*newvector , "i")
-        print(newvector.x*self.speed(), newvector.y*self.speed(), newvector.z*self.speed(), "v")
+        normal_vector = vector(position.x/(self.semi_major_axis_lengtht()**2), position.y/(self.semi_minor_axis_lengtht()**2), position.z/(self.semi_minor_axis_lengtht()**2))
+        normal_vector_length = math.sqrt(normal_vector*normal_vector)
+        print(normal_vector_length, normal_vector)
+        unit_normal_vector = vector(position.x/((self.semi_major_axis_lengtht()**2)*normal_vector_length), position.y/((self.semi_minor_axis_lengtht()**2)*normal_vector_length), position.z/((self.semi_minor_axis_lengtht()**2)*normal_vector_length))
+        print(unit_normal_vector, "vect", math.sqrt(unit_normal_vector*unit_normal_vector))
+        unit_tangent_vector = vector(-unit_normal_vector.y, unit_normal_vector.x, )
         return 0
         #return vector(0, math.sqrt(2*Sun.mu()*self.apoapsis/(self.periapsis*(self.apoapsis+self.periapsis))) ,0)#correct mu (and everything else xd)
 
@@ -288,6 +291,7 @@ asteroid_1996FG3.time(30,45,14,12,5,2004)
 print(math.degrees(asteroid_1996FG3.azimuth_angle()), "deg")
 print(asteroid_1996FG3.position_vector())
 Earth.velocity_vector()
+asteroid_1996FG3.velocity_vector()
 
 
 
