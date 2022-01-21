@@ -44,6 +44,7 @@ class vector:
     def vector_add(self, w):
         return vector(self.x+w.x, self.y+w.y, self.z+w.z)
     def vector_subtract(self, w):
+        #print(type(w.x),type(self.x))
         return vector(self.x-w.x, self.y-w.y, self.z-w.z)
     def vector_mul_scalar(self, s):
         return vector(self.x*s, self.y*s, self.z*s)
@@ -276,13 +277,18 @@ class param:
         
     def velocity_vector(self):
         #https://math.stackexchange.com/questions/655853/ellipse-tangents-in-3d
-        c = vector(self.frame_of_reference_correction,0,0)#center of elipse
+        c = vector(self.frame_of_reference_correction(),0,0)#center of elipse
         paramiter = self.azimuth_angle()
         u = self.semi_major_axis_unit_vector().vector_mul_scalar(self.semi_major_axis_length()*math.sin(paramiter))
         v = self.semi_minor_axis_unit_vector().vector_mul_scalar(self.semi_minor_axis_length()*math.cos(paramiter))
-        tangent_unit_vector = c.vector_subtract(u)
+        tangent_unit_vector = c.vector_subtract(u.vector_add(v))
         return tangent_unit_vector.vector_mul_scalar(self.speed())
         #return vector(0, math.sqrt(2*Sun.mu()*self.apoapsis/(self.periapsis*(self.apoapsis+self.periapsis))) ,0)#correct mu (and everything else xd)
+    def specific_angular_momentum(self):
+        return self.velocity_vector().vector_mul(self.position_vector())
+    def position_of_ascending_node(self):
+        k = vector(0,0,1)
+        return k.vector_mul(self.specific_angular_momentum())
 
 
 Sun = param("Sun")
