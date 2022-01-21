@@ -17,9 +17,9 @@ from scipy.integrate import odeint
 
 G = 6.67430151515151515151515E-11 #Gravitational consatant
 
-def period(mu,semi_major_axis_lengtht):
-    #print((2*math.pi/math.sqrt(mu))*(semi_major_axis_lengtht**(3/2))/60/60/24,"days")
-    return 2*math.pi/math.sqrt(mu)*semi_major_axis_lengtht**(3/2)#seconds!
+def period(mu,semi_major_axis_length):
+    #print((2*math.pi/math.sqrt(mu))*(semi_major_axis_length**(3/2))/60/60/24,"days")
+    return 2*math.pi/math.sqrt(mu)*semi_major_axis_length**(3/2)#seconds!
 def days_to_seconds(time):
     return time*24*60*60
 def seconds_to_days(time):
@@ -41,6 +41,14 @@ class vector:
         return self.x*w.x + self.y*w.y + self.z*w.z
     def vector_mul(self, w):#iloczyn wektorowy
         return vector(self.y*w.z-self.z*w.y, self.z*w.x-self.x*w.z, self.x*w.y-self.y*w.x)
+    def vector_add(self, w):
+        return vector(self.x+w.x, self.y+w.y, self.z+w.z)
+    def vector_subtract(self, w):
+        return vector(self.x-w.x, self.y-w.y, self.z-w.z)
+    def vector_mul_scalar(self, s):
+        return vector(self.x*s, self.y*s, self.z*s)
+    def vector_div_scalar(self, s):
+        return vector(self.x/s, self.y/s, self.z/s)
 #jak uzywac iloczynu wektororowego
 #A = vector(1,2,3)
 #B = vector(4,5,6)
@@ -57,7 +65,7 @@ class param:
         self.mass = mass #kg
     def mu(self):
         return self.mass*G/1000000000 #km^3⋅s^–2 
-    def orbit(self, apoapsis, periapsis, eccentricity, inclination, orbited_body, mean_anomaly, epoch_MJD):
+    def orbit(self, apoapsis, periapsis, eccentricity, inclination, arg_of_periapsis, orbited_body, mean_anomaly, epoch_MJD):
         self.periapsis  = periapsis #km
         self.apoapsis = apoapsis #km
         self.eccentricity = eccentricity #[-]
@@ -65,13 +73,19 @@ class param:
         self.orbited_body = orbited_body#class param of the body being orbited
         self.mean_anomaly = math.radians(mean_anomaly)#input in degrees
         self.epoch_MJD = epoch_MJD#input modified Julian Date
+        #self.ascending_node = ascending_node#input in degrees
+        self.arg_of_periapsis = math.radians(arg_of_periapsis)#input in degrees
           
-    def semi_major_axis_lengtht(self):#a
-        #print((self.periapsis+self.apoapsis)/2)
+    def semi_major_axis_length(self):#a
         return (self.periapsis+self.apoapsis)/2
-    def semi_minor_axis_lengtht(self):#b or c
+    def semi_major_axis_unit_vector(self):
+        answer = vector(self.semi_major_axis_length()*self.sin(self.inclination)*self.cos(self.arg_of_periapsis), self.semi_minor_axis_length()*self.sin(self.inclination)*self.sin(self.arg_of_periapsis), self.semi_minor_axis_length()*self.cos(self.inclination))
+        return answer.vector_div_scalar(self.semi_major_axis_length())
+    def semi_minor_axis_length(self):#b or c
         return (self.periapsis+self.apoapsis)/2*math.sqrt(1-self.eccentricity*self.eccentricity)
-
+    def semi_minor_axis_unit_vector(self):
+        answer = vector(self.semi_major_axis_length()*self.sin(self.inclination)*self.cos(self.arg_of_periapsis+math.pi/2), self.semi_minor_axis_length()*self.sin(self.inclination)*self.sin(self.arg_of_periapsis+math.pi/2), self.semi_minor_axis_length()*self.cos(self.inclination))
+        return  answer.vector_div_scalar(self.semi_minor_axis_length())
 #cos i sin zapewniaja sprawdzaja czy kat nie jest zbyt blisko pi/2 i pi
     def cos(self, angle_rad):
         if abs(angle_rad) > math.pi/2-0.00000001 and abs(angle_rad) < math.pi/2+0.00000001:
@@ -118,7 +132,7 @@ class param:
         #print("UT", UT)
         return Jo + UT/24 #days
 #    def velocity_unit_vector(self, X, Y, Z):
-#        A = X/(self.semi_major_axis_lengtht**2)
+#        A = X/(self.semi_major_axis_length**2)
 #        B = Y
 #        return 0
 #    def set_current_MJD(self, current_MJD):
@@ -126,17 +140,17 @@ class param:
     
     
     
-    def elipse_function(self,X,A,B):
+    def ellipse_function(self,X,A,B):
         return B*math.sqrt(1-((X-A)**2)/(A**2))
-    def area_under_elipse(self,x):
-        A = self.semi_major_axis_lengtht()
-        B = self.semi_minor_axis_lengtht()
-        return quad(self.elipse_function,0, x, args=(A,B))[0]
+    def area_under_ellipse(self,x):
+        A = self.semi_major_axis_length()
+        B = self.semi_minor_axis_length()
+        return quad(self.ellipse_function,0, x, args=(A,B))[0]
     
-    def azimuth_angle(self):#returns angle in rad
+    def azimuth_angle(self):#returns angle in rad + arg_of_periapsis (so true anomaly + arg_of_periapsis)
         time_current = days_to_seconds(self.convert_standard_time_notation_to_MJD())#days_to_seconds(self.Julian_Day())
-        half_elipse_area = math.pi*self.semi_major_axis_lengtht()*self.semi_minor_axis_lengtht()/2
-        P = period(self.orbited_body.mu(), self.semi_major_axis_lengtht())
+        half_ellipse_area = math.pi*self.semi_major_axis_length()*self.semi_minor_axis_length()/2
+        P = period(self.orbited_body.mu(), self.semi_major_axis_length())
         time0 = P/2#time of half a orbit
         unit_time = time_current % P #definiuje pozycje na orbicie (narazie zakladajac ze poczotek czasu to kiedy obiekt byl na peryapsie)
         #print(seconds_to_days(unit_time), "unit time")
@@ -145,20 +159,20 @@ class param:
         if unit_time == 0:#priapsis
             return 0
         
-        wich_half_of_orbit = 1
+        which_half_of_orbit = 1
         if unit_time > P/2:
-            wich_half_of_orbit = -1
+            which_half_of_orbit = -1
             unit_time = unit_time - P/2
             
-        swept_area = half_elipse_area*unit_time/time0
-        X_max = self.semi_major_axis_lengtht()*2
+        swept_area = half_ellipse_area*unit_time/time0
+        X_max = self.semi_major_axis_length()*2
         #print(X_max, "X_max")
-        rotation_point = self.semi_major_axis_lengtht()-math.sqrt(self.semi_major_axis_lengtht()**2-self.semi_minor_axis_lengtht()**2)
+        rotation_point = self.semi_major_axis_length()-math.sqrt(self.semi_major_axis_length()**2-self.semi_minor_axis_length()**2)
         #print(rotation_point, "rotation")
-        #print(half_elipse_area, "half_elipse_area")
+        #print(half_ellipse_area, "half_ellipse_area")
         
         error = np.zeros(3) 
-        error[0] = self.semi_major_axis_lengtht()#guessed x
+        error[0] = self.semi_major_axis_length()#guessed x
         error[1] = 2#scale of guess
         error[2] = 0 #save it right (1) or left (2) of rotation point
         accuracy = 1 #km along x axis
@@ -168,7 +182,7 @@ class param:
         
         
         while 1==1:
-            area = self.area_under_elipse(error[0])
+            area = self.area_under_ellipse(error[0])
             
             #print(area,"area________________new loop pass, with entering x at", error[0])
             if error[1] > 1e+300:
@@ -180,13 +194,13 @@ class param:
             triangle_area = np.zeros(2)
             if error[0] > rotation_point:
                 #print("entered triangle 1")#subtract triangle, right of rotation point
-                triangle_area[0] = 0.5*(error[0]-rotation_point)*(self.elipse_function(error[0],self.semi_major_axis_lengtht(),self.semi_minor_axis_lengtht()))
+                triangle_area[0] = 0.5*(error[0]-rotation_point)*(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length()))
                 triangle_area[1] = -1
                 error[2] = 1
                 #print(triangle_area[0], "triangle_area", error[0]-rotation_point, "triangle base")
             else:
                 #print("entered triangle 2")#add triangle, left of rotation point
-                triangle_area[0] = 0.5*(rotation_point-error[0])*(self.elipse_function(error[0],self.semi_major_axis_lengtht(),self.semi_minor_axis_lengtht()))
+                triangle_area[0] = 0.5*(rotation_point-error[0])*(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length()))
                 triangle_area[1] = 1
                 error[2] = 2
                 #print(triangle_area[0], "triangle_area", error[0]-rotation_point, "triangle base")
@@ -217,29 +231,29 @@ class param:
             x_previous = error[0]
             '''print("continued loop with error[0] at %f" % error[0])
             print("and error[1] at", error[1])
-            print(error[0]/(self.semi_major_axis_lengtht()*2)*100 , "% x - of boundry line______________")'''
+            print(error[0]/(self.semi_major_axis_length()*2)*100 , "% x - of boundry line______________")'''
         
         
         if error[2] == 1:
-            if wich_half_of_orbit == 1:#first half
-                print("----------- exit angle 1:right of rotation_point, first half of orbit")
-                angle = math.pi-math.atan(self.elipse_function(error[0],self.semi_major_axis_lengtht(),self.semi_minor_axis_lengtht())/(error[0]-rotation_point))
+            if which_half_of_orbit == 1:#first half
+                #print("----------- exit angle 1:right of rotation_point, first half of orbit")
+                angle = math.pi-math.atan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(error[0]-rotation_point))
                 return angle
-            elif wich_half_of_orbit == -1:#second half
-                print("----------- exit angle 2:right of rotation_point, second half of orbit")
-                angle = 2*math.pi-math.atan(self.elipse_function(error[0],self.semi_major_axis_lengtht(),self.semi_minor_axis_lengtht())/(error[0]-rotation_point))
+            elif which_half_of_orbit == -1:#second half
+                #print("----------- exit angle 2:right of rotation_point, second half of orbit")
+                angle = 2*math.pi-math.atan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(error[0]-rotation_point))
                 return angle
             else:
                 sys.exit("azimuth_angle failed to determin whether angle is + ro - on the y axis")
         elif error[2] == 2:
-            if wich_half_of_orbit == 1:
-                print("----------- exit angle 3:left of rotation_point, first half of orbit")
-                angle = math.atan(self.elipse_function(error[0],self.semi_major_axis_lengtht(),self.semi_minor_axis_lengtht())/(rotation_point-error[0]))
+            if which_half_of_orbit == 1:
+                #print("----------- exit angle 3:left of rotation_point, first half of orbit")
+                angle = math.atan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(rotation_point-error[0]))
                 return angle
-            elif wich_half_of_orbit == -1:
-                print("----------- exit angle 4:left of rotation_point, second half of orbit")
-                angle = math.pi+math.atan(self.elipse_function(error[0],self.semi_major_axis_lengtht(),self.semi_minor_axis_lengtht())/(rotation_point-error[0]))
-                return angle
+            elif which_half_of_orbit == -1:
+                #print("----------- exit angle 4:left of rotation_point, second half of orbit")
+                angle = math.pi+math.atan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(rotation_point-error[0]))
+                return angle 
             else:
                 sys.exit("azimuth_angle failed to determine whether angle is + ro - on the y axis")
         else:
@@ -248,27 +262,26 @@ class param:
 
     
      
-    def frame_of_referance_correction(self):#move x axis from center of elipse to foci
-        #print(math.sqrt(self.semi_major_axis_lengtht()*self.semi_major_axis_lengtht()-self.semi_minor_axis_lengtht()*self.semi_minor_axis_lengtht()),"frame x correction")
-        return math.sqrt(self.semi_major_axis_lengtht()*self.semi_major_axis_lengtht()-self.semi_minor_axis_lengtht()*self.semi_minor_axis_lengtht())
+    def frame_of_reference_correction(self):#move x axis from center of ellipse to foci
+        #print(math.sqrt(self.semi_major_axis_length()*self.semi_major_axis_length()-self.semi_minor_axis_length()*self.semi_minor_axis_length()),"frame x correction")
+        return math.sqrt(self.semi_major_axis_length()*self.semi_major_axis_length()-self.semi_minor_axis_length()*self.semi_minor_axis_length())
     def position_vector(self):
-        calculated_azimuth_angle = self.azimuth_angle()
-        return vector(self.semi_major_axis_lengtht()*self.sin(self.inclination)*self.cos(calculated_azimuth_angle)-self.frame_of_referance_correction(), self.semi_minor_axis_lengtht()*self.sin(self.inclination)*self.sin(calculated_azimuth_angle), self.semi_minor_axis_lengtht()*self.cos(self.inclination))
+        calculated_azimuth_angle_and_arg_of_periapsis = self.azimuth_angle() + self.arg_of_periapsis
+        return vector(self.semi_major_axis_length()*self.sin(self.inclination)*self.cos(calculated_azimuth_angle_and_arg_of_periapsis)-self.frame_of_reference_correction(), self.semi_minor_axis_length()*self.sin(self.inclination)*self.sin(calculated_azimuth_angle_and_arg_of_periapsis), self.semi_minor_axis_length()*self.cos(self.inclination))
     def distance_from_orbited_body(self):
         r = self.position_vector()
         return math.sqrt(r*r)
     def speed(self):
-        return math.sqrt(self.orbited_body.mu()*(2/self.distance_from_orbited_body()-1/self.semi_major_axis_lengtht()))
+        return math.sqrt(self.orbited_body.mu()*(2/self.distance_from_orbited_body()-1/self.semi_major_axis_length()))
         
     def velocity_vector(self):
-        position = self.position_vector()
-        normal_vector = vector(position.x/(self.semi_major_axis_lengtht()**2), position.y/(self.semi_minor_axis_lengtht()**2), position.z/(self.semi_minor_axis_lengtht()**2))
-        normal_vector_length = math.sqrt(normal_vector*normal_vector)
-        print(normal_vector_length, normal_vector)
-        unit_normal_vector = vector(position.x/((self.semi_major_axis_lengtht()**2)*normal_vector_length), position.y/((self.semi_minor_axis_lengtht()**2)*normal_vector_length), position.z/((self.semi_minor_axis_lengtht()**2)*normal_vector_length))
-        print(unit_normal_vector, "vect", math.sqrt(unit_normal_vector*unit_normal_vector))
-        unit_tangent_vector = vector(-unit_normal_vector.y, unit_normal_vector.x, )
-        return 0
+        #https://math.stackexchange.com/questions/655853/ellipse-tangents-in-3d
+        c = vector(self.frame_of_reference_correction,0,0)#center of elipse
+        paramiter = self.azimuth_angle()
+        u = self.semi_major_axis_unit_vector().vector_mul_scalar(self.semi_major_axis_length()*math.sin(paramiter))
+        v = self.semi_minor_axis_unit_vector().vector_mul_scalar(self.semi_minor_axis_length()*math.cos(paramiter))
+        tangent_unit_vector = c.vector_subtract(u)
+        return tangent_unit_vector.vector_mul_scalar(self.speed())
         #return vector(0, math.sqrt(2*Sun.mu()*self.apoapsis/(self.periapsis*(self.apoapsis+self.periapsis))) ,0)#correct mu (and everything else xd)
 
 
@@ -278,15 +291,17 @@ Sun.body(1.9885E+30)
 
 Earth = param("Earth")
 Earth.body(5.97237E+24)
-#  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
-Earth.orbit(152100000, 147095000, 0.0167086, 0, Sun, 358.617, convert_Julian_Day_to_MJD(J2000_to_Julian_Day(0)))#365.256
+#  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
+Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617, convert_Julian_Day_to_MJD(J2000_to_Julian_Day(0)))#365.256
 Earth.time(30,45,14,12,5,2004)
 print(math.degrees(Earth.azimuth_angle()), "deg")
 print(Earth.position_vector())
 print(Earth.speed(),"speed")
 
+
+
 asteroid_1996FG3 = param("1996FG3")
-asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, Sun, 202.32, 59600.0)
+asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32, 59600.0)
 asteroid_1996FG3.time(30,45,14,12,5,2004)
 print(math.degrees(asteroid_1996FG3.azimuth_angle()), "deg")
 print(asteroid_1996FG3.position_vector())
