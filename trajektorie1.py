@@ -299,6 +299,14 @@ class param:
 
 def solve():
     return 0
+
+
+start_of_analysis = param("time start")
+#second, minute, hour, day, month, year
+start_of_analysis.time(0,0,0,1,1,2023)
+end_of_analysis = param("time end")
+end_of_analysis.time(0,0,0,1,1,2098)
+
 Sun = param("Sun")
 Sun.body(1.9885E+30)
 
