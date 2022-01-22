@@ -50,6 +50,8 @@ class vector:
         return vector(self.x*s, self.y*s, self.z*s)
     def vector_div_scalar(self, s):
         return vector(self.x/s, self.y/s, self.z/s)
+    def angle_between_vectors(self, w):#https://www.omnicalculator.com/math/angle-between-two-vectors#angle-between-two-3d-vectors-example
+        return math.acos((self.x*w.x+self.y*w.y+self.z*w.z)/(math.sqrt(self.x**2+self.y**2+self.z**2)*math.sqrt(w.x**2+w.y**2+w.z**2)))
 #jak uzywac iloczynu wektororowego
 #A = vector(1,2,3)
 #B = vector(4,5,6)
@@ -289,34 +291,39 @@ class param:
     def position_of_ascending_node(self):
         k = vector(0,0,1)
         return k.vector_mul(self.specific_angular_momentum())
+    def  angel_to_ascending_node(self):
+        return self.position_vector().angle_between_vectors(self.position_of_ascending_node())
 
 
+
+
+def solve():
+    return 0
 Sun = param("Sun")
 Sun.body(1.9885E+30)
-
 
 Earth = param("Earth")
 Earth.body(5.97237E+24)
 #  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
 Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617, convert_Julian_Day_to_MJD(J2000_to_Julian_Day(0)))#365.256
 Earth.time(30,45,14,12,5,2004)
-print(math.degrees(Earth.azimuth_angle()), "deg")
-print(Earth.position_vector())
-print(Earth.speed(),"speed")
-
-
 
 asteroid_1996FG3 = param("1996FG3")
 asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32, 59600.0)
 asteroid_1996FG3.time(30,45,14,12,5,2004)
+
+'''
+print(math.degrees(Earth.azimuth_angle()), "deg")
+print(Earth.position_vector())
+print(Earth.speed(),"speed")
 print(math.degrees(asteroid_1996FG3.azimuth_angle()), "deg")
 print(asteroid_1996FG3.position_vector())
 Earth.velocity_vector()
 asteroid_1996FG3.velocity_vector()
+print(Earth.position_of_ascending_node(), asteroid_1996FG3.position_of_ascending_node())
 
 
 
-'''
 def simpleHohman(r1,r2,mu):
     deltaVd = math.sqrt(mu/r1)*(math.sqrt(2*r2/(r1+r2))-1)
     print(deltaVd*1000)
