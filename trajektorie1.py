@@ -13,9 +13,10 @@ import math
 import sys
 from scipy.integrate import quad
 from scipy.integrate import odeint
+from astropy.time import Time
+from astropy.constants import G  #Gravitational consatant
 
 
-G = 6.67430151515151515151515E-11 #Gravitational consatant
 
 def period(mu,semi_major_axis_length):
     #print((2*math.pi/math.sqrt(mu))*(semi_major_axis_length**(3/2))/60/60/24,"days")
@@ -24,10 +25,6 @@ def days_to_seconds(time):
     return time*24*60*60
 def seconds_to_days(time):
     return time/60/60/24
-def J2000_to_Julian_Day(time):
-    return (time-2000)*365.25+2451545
-def convert_Julian_Day_to_MJD(time):
-    return time-2400000.5
 
 class vector:
     #https://tomaszgolan.github.io/js-python/wyklady/js-python_w10/#wektor-iloczyn-skalarny
@@ -89,7 +86,7 @@ class param:
     def semi_minor_axis_unit_vector(self):
         answer = vector(self.semi_major_axis_length()*self.sin(self.inclination)*self.cos(self.arg_of_periapsis+math.pi/2), self.semi_minor_axis_length()*self.sin(self.inclination)*self.sin(self.arg_of_periapsis+math.pi/2), self.semi_minor_axis_length()*self.cos(self.inclination))
         return  answer.vector_div_scalar(self.semi_minor_axis_length())
-#cos i sin zapewniaja sprawdzaja czy kat nie jest zbyt blisko pi/2 i pi
+    #cos i sin zapewniaja sprawdzaja czy kat nie jest zbyt blisko pi/2 i pi
     def cos(self, angle_rad):
         if abs(angle_rad) > math.pi/2-0.00000001 and abs(angle_rad) < math.pi/2+0.00000001:
             return 0
@@ -101,47 +98,8 @@ class param:
         else:
             return math.sin(angle_rad)
     
-    def time(self,second, minute, hour, day, month, year): 
-        if second > 59 or second < 0:
-            sys.exit("seconds input out of range")
-        elif minute > 59 or minute < 0:
-            sys.exit("minute input out of range")
-        elif hour > 24 or hour < 0:
-            sys.exit("hour input out of range")
-        elif day > 31 or day < 1:
-            sys.exit("day input out of range")
-        elif month > 12 or month < 1:
-            sys.exit("month input out of range")
-        elif year > 2099 or year < 1901:
-            sys.exit("year input out of range")
-        else:
-            self.second = second
-            self.minute = minute
-            self.hour = hour
-            self.day = day
-            self.month = month
-            self.year = year
-    
-    def convert_standard_time_notation_to_Julian_Day(self):#Boulet 1991   
-        Jo = 367*self.year-int(7/4*(self.year+int((self.month+9)/12)))+int(275*self.month/9)+self.day+1721013.5
-        UT = self.hour+self.minute/60+self.second/3600
-        #print("jo", Jo)
-        #print("UT", UT)
-        return Jo + UT/24 #days
-    def convert_standard_time_notation_to_MJD(self):#https://scienceworld.wolfram.com/astronomy/ModifiedJulianDate.html
-        Jo = 367*self.year-int(7/4*(self.year+int((self.month+9)/12)))+int(275*self.month/9)+self.day+1721013.5-2400000.5
-        UT = self.hour+self.minute/60+self.second/3600
-        #print("jo", Jo)
-        #print("UT", UT)
-        return Jo + UT/24 #days
-#    def velocity_unit_vector(self, X, Y, Z):
-#        A = X/(self.semi_major_axis_length**2)
-#        B = Y
-#        return 0
-#    def set_current_MJD(self, current_MJD):
-#        self.current_MJD = current_MJD
-    
-    
+    def set_time(self, isot_time):
+        self.MJD = isot_time.mjd
     
     def ellipse_function(self,X,A,B):
         return B*math.sqrt(1-((X-A)**2)/(A**2))
@@ -151,7 +109,7 @@ class param:
         return quad(self.ellipse_function,0, x, args=(A,B))[0]
     
     def azimuth_angle(self):#returns angle in rad + arg_of_periapsis (so true anomaly + arg_of_periapsis)
-        time_current = days_to_seconds(self.convert_standard_time_notation_to_MJD())#days_to_seconds(self.Julian_Day())
+        time_current = days_to_seconds(self.MJD)#days_to_seconds(self.Julian_Day())
         half_ellipse_area = math.pi*self.semi_major_axis_length()*self.semi_minor_axis_length()/2
         P = period(self.orbited_body.mu(), self.semi_major_axis_length())
         time0 = P/2#time of half a orbit
@@ -291,7 +249,7 @@ class param:
     def position_of_ascending_node(self):
         k = vector(0,0,1)
         return k.vector_mul(self.specific_angular_momentum())
-    def  angel_to_ascending_node(self):
+    def  angle_to_ascending_node(self):
         return self.position_vector().angle_between_vectors(self.position_of_ascending_node())
 
 
@@ -303,22 +261,24 @@ def solve():
 
 start_of_analysis = param("time start")
 #second, minute, hour, day, month, year
-start_of_analysis.time(0,0,0,1,1,2023)
+start_of_analysis.set_time(Time('2023-01-01T00:00:00', format = 'isot'))
 end_of_analysis = param("time end")
-end_of_analysis.time(0,0,0,1,1,2098)
+end_of_analysis.set_time(Time('2098-01-01T00:00:00', format = 'isot'))
 
 Sun = param("Sun")
 Sun.body(1.9885E+30)
 
 Earth = param("Earth")
 Earth.body(5.97237E+24)
+epoch_earth = Time(2000.0, format = 'jyear')
 #  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
-Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617, convert_Julian_Day_to_MJD(J2000_to_Julian_Day(0)))#365.256
-Earth.time(30,45,14,12,5,2004)
+Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617, epoch_earth.mjd)#365.256
 
+Earth.set_time(Time('2004-05-12T14:45:30', format = 'isot'))
 asteroid_1996FG3 = param("1996FG3")
 asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32, 59600.0)
-asteroid_1996FG3.time(30,45,14,12,5,2004)
+asteroid_1996FG3.set_time(Time('2004-05-12T14:45:30', format = 'isot'))
+print(asteroid_1996FG3.angle_to_ascending_node())
 
 '''
 print(math.degrees(Earth.azimuth_angle()), "deg")
