@@ -15,9 +15,9 @@ from scipy.integrate import quad
 from scipy.integrate import odeint
 from astropy.time import Time
 from astropy.constants import G  #Gravitational consatant
-
-
-
+from astropy.constants import M_earth  #Gravitational consatant
+from astropy.constants import M_sun  #Gravitational consatant
+print(G.value, "----G")
 def period(mu,semi_major_axis_length):
     #print((2*math.pi/math.sqrt(mu))*(semi_major_axis_length**(3/2))/60/60/24,"days")
     return 2*math.pi/math.sqrt(mu)*semi_major_axis_length**(3/2)#seconds!
@@ -64,7 +64,7 @@ class param:
     def body(self, mass):
         self.mass = mass #kg
     def mu(self):
-        return self.mass*G/1000000000 #km^3⋅s^–2 
+        return self.mass*G.value/1000000000 #km^3⋅s^–2 
     def orbit(self, apoapsis, periapsis, eccentricity, inclination, arg_of_periapsis, orbited_body, mean_anomaly, epoch_MJD):
         self.periapsis  = periapsis #km
         self.apoapsis = apoapsis #km
@@ -111,7 +111,9 @@ class param:
     def azimuth_angle(self):#returns angle in rad + arg_of_periapsis (so true anomaly + arg_of_periapsis)
         time_current = days_to_seconds(self.MJD)#days_to_seconds(self.Julian_Day())
         half_ellipse_area = math.pi*self.semi_major_axis_length()*self.semi_minor_axis_length()/2
+        print("--------1----------")
         P = period(self.orbited_body.mu(), self.semi_major_axis_length())
+        print("--------2----------")
         time0 = P/2#time of half a orbit
         unit_time = time_current % P #definiuje pozycje na orbicie (narazie zakladajac ze poczotek czasu to kiedy obiekt byl na peryapsie)
         #print(seconds_to_days(unit_time), "unit time")
@@ -266,10 +268,10 @@ end_of_analysis = param("time end")
 end_of_analysis.set_time(Time('2098-01-01T00:00:00', format = 'isot'))
 
 Sun = param("Sun")
-Sun.body(1.9885E+30)
+Sun.body(M_sun.value)
 
 Earth = param("Earth")
-Earth.body(5.97237E+24)
+Earth.body(M_earth.value)
 epoch_earth = Time(2000.0, format = 'jyear')
 #  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
 Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617, epoch_earth.mjd)#365.256
