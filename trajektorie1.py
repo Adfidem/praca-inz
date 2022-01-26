@@ -239,7 +239,7 @@ class param:
         
     def velocity_vector(self):
         #https://math.stackexchange.com/questions/655853/ellipse-tangents-in-3d
-        c = vector(self.frame_of_reference_correction(),0,0)#center of elipse
+        c = vector(self.frame_of_reference_correction(),0,0)#center of ellipse
         paramiter = self.azimuth_angle()
         u = self.semi_major_axis_unit_vector().vector_mul_scalar(self.semi_major_axis_length()*math.sin(paramiter))
         v = self.semi_minor_axis_unit_vector().vector_mul_scalar(self.semi_minor_axis_length()*math.cos(paramiter))
