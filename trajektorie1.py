@@ -65,14 +65,14 @@ class param:
         self.mass = mass #kg
     def mu(self):
         return self.mass*G.value/1000000000 #km^3⋅s^–2 
-    def orbit(self, apoapsis, periapsis, eccentricity, inclination, arg_of_periapsis, orbited_body, mean_anomaly, epoch_MJD):
+    def orbit(self, apoapsis, periapsis, eccentricity, inclination, arg_of_periapsis, orbited_body, mean_anomaly):#, epoch_MJD
         self.periapsis  = periapsis #km
         self.apoapsis = apoapsis #km
         self.eccentricity = eccentricity #[-]
         self.inclination = math.pi/2-math.radians(inclination)#input in degrees
         self.orbited_body = orbited_body#class param of the body being orbited
         self.mean_anomaly = math.radians(mean_anomaly)#input in degrees
-        self.epoch_MJD = epoch_MJD#input modified Julian Date
+        #self.epoch_MJD = epoch_MJD#input modified Julian Date - I don't think this is neaded any more
         #self.ascending_node = ascending_node#input in degrees
         self.arg_of_periapsis = math.radians(arg_of_periapsis)#input in degrees
           
@@ -111,9 +111,7 @@ class param:
     def azimuth_angle(self):#returns angle in rad + arg_of_periapsis (so true anomaly + arg_of_periapsis)
         time_current = days_to_seconds(self.MJD)#days_to_seconds(self.Julian_Day())
         half_ellipse_area = math.pi*self.semi_major_axis_length()*self.semi_minor_axis_length()/2
-        print("--------1----------")
         P = period(self.orbited_body.mu(), self.semi_major_axis_length())
-        print("--------2----------")
         time0 = P/2#time of half a orbit
         unit_time = time_current % P #definiuje pozycje na orbicie (narazie zakladajac ze poczotek czasu to kiedy obiekt byl na peryapsie)
         #print(seconds_to_days(unit_time), "unit time")
@@ -256,6 +254,22 @@ class param:
 
 
 
+def transfer_to_massles_body():
+    
+    return
+
+def transfer_from_massles_body():
+    
+    return
+
+def planetary_departure():
+    
+    return
+def planetary_rendezvous():
+    
+    return
+
+
 
 def solve():
     return 0
@@ -274,11 +288,11 @@ Earth = param("Earth")
 Earth.body(M_earth.value)
 epoch_earth = Time(2000.0, format = 'jyear')
 #  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
-Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617, epoch_earth.mjd)#365.256
+Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617)#365.256 #, epoch_earth.mjd
 
 Earth.set_time(Time('2004-05-12T14:45:30', format = 'isot'))
 asteroid_1996FG3 = param("1996FG3")
-asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32, 59600.0)
+asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32) #, 59600.0
 asteroid_1996FG3.set_time(Time('2004-05-12T14:45:30', format = 'isot'))
 print(asteroid_1996FG3.angle_to_ascending_node())
 
