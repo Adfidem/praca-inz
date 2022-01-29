@@ -17,7 +17,7 @@ from astropy.time import Time
 from astropy.constants import G  #Gravitational consatant
 from astropy.constants import M_earth  #Gravitational consatant
 from astropy.constants import M_sun  #Gravitational consatant
-print(G.value, "----G")
+
 def period(mu,semi_major_axis_length):
     #print((2*math.pi/math.sqrt(mu))*(semi_major_axis_length**(3/2))/60/60/24,"days")
     return 2*math.pi/math.sqrt(mu)*semi_major_axis_length**(3/2)#seconds!
@@ -254,7 +254,14 @@ class param:
 
 
 
-def transfer_to_massles_body():
+def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destination):#in MJD
+    ship = param("ship")
+    origin.set_time(time_of_departure)
+    destination.set_time(time_of_arrival)
+    
+    ship.orbit(origin.apoapsis, origin.periapsis, origin.eccentricity, origin.inclination, origin.arg_of_periapsis, origin.orbited_body, origin.mean_anomaly)
+    ship.set_time(time_of_departure)
+    
     
     return
 
@@ -287,14 +294,21 @@ Sun.body(M_sun.value)
 Earth = param("Earth")
 Earth.body(M_earth.value)
 epoch_earth = Time(2000.0, format = 'jyear')
-#  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
+#  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg],#### epoch_MJD [MJD]
 Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617)#365.256 #, epoch_earth.mjd
 
 Earth.set_time(Time('2004-05-12T14:45:30', format = 'isot'))
 asteroid_1996FG3 = param("1996FG3")
 asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32) #, 59600.0
 asteroid_1996FG3.set_time(Time('2004-05-12T14:45:30', format = 'isot'))
-print(asteroid_1996FG3.angle_to_ascending_node())
+
+
+
+
+transfer_to_massles_body(Time('2004-05-12T14:45:30', format = 'isot'),Time('2008-05-12T14:45:30', format = 'isot'), Earth, asteroid_1996FG3)
+
+
+
 
 '''
 print(math.degrees(Earth.azimuth_angle()), "deg")
