@@ -271,11 +271,14 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     #unify frame of reference, center of elipse at (0,0,0)
     origin_position = origin.position_vector().vector_add(vector(origin.frame_of_reference_correction(),0,0))
     destination_position = destination.position_vector().vector_add(vector(destination.frame_of_reference_correction(),0,0))
+    
+    
     plane_vector = origin_position.vector_mul(destination_position)
     print(plane_vector)
     plane_unit_vector = plane_vector.vector_div_scalar(plane_vector.vector_length())
     print(plane_unit_vector)
-    
+    print(origin_position.vector_mul(plane_unit_vector), origin_position)
+    print(destination_position.vector_mul(plane_unit_vector), destination_position)
     '''
     #change k - make shure it't the right ascending node
     #point2 = destination.position_of_ascending_node() #ascending_node
