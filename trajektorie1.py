@@ -49,6 +49,8 @@ class vector:
         return vector(self.x/s, self.y/s, self.z/s)
     def angle_between_vectors(self, w):#https://www.omnicalculator.com/math/angle-between-two-vectors#angle-between-two-3d-vectors-example
         return math.acos((self.x*w.x+self.y*w.y+self.z*w.z)/(math.sqrt(self.x**2+self.y**2+self.z**2)*math.sqrt(w.x**2+w.y**2+w.z**2)))
+    def vector_length(self):
+        return math.sqrt(self.x**2+self.y**2+self.z**2)
 #jak uzywac iloczynu wektororowego
 #A = vector(1,2,3)
 #B = vector(4,5,6)
@@ -237,7 +239,7 @@ class param:
         
     def velocity_vector(self):
         #https://math.stackexchange.com/questions/655853/ellipse-tangents-in-3d
-        c = vector(self.frame_of_reference_correction(),0,0)#center of ellipse
+        c = vector(-self.frame_of_reference_correction(),0,0)#center of ellipse, changed to "-" correction
         paramiter = self.azimuth_angle()
         u = self.semi_major_axis_unit_vector().vector_mul_scalar(self.semi_major_axis_length()*math.sin(paramiter))
         v = self.semi_minor_axis_unit_vector().vector_mul_scalar(self.semi_minor_axis_length()*math.cos(paramiter))
@@ -245,11 +247,12 @@ class param:
         return tangent_unit_vector.vector_mul_scalar(self.speed())
         #return vector(0, math.sqrt(2*Sun.mu()*self.apoapsis/(self.periapsis*(self.apoapsis+self.periapsis))) ,0)#correct mu (and everything else xd)
     def specific_angular_momentum(self):
-        return self.velocity_vector().vector_mul(self.position_vector())
+        return self.position_vector().vector_mul(self.velocity_vector())#trzeba pomyslec !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        #return self.velocity_vector().vector_mul(self.position_vector())
     def position_of_ascending_node(self):
         k = vector(0,0,1)
         return k.vector_mul(self.specific_angular_momentum())
-    def  angle_to_ascending_node(self):
+    def angle_to_ascending_node(self):
         return self.position_vector().angle_between_vectors(self.position_of_ascending_node())
 
 
@@ -262,8 +265,54 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     ship.orbit(origin.apoapsis, origin.periapsis, origin.eccentricity, origin.inclination, origin.arg_of_periapsis, origin.orbited_body, origin.mean_anomaly)
     ship.set_time(time_of_departure)
     
+    print(origin.frame_of_reference_correction(), destination.frame_of_reference_correction(), "f.o.r.c")
     
+    #return to 2D elipse
+    #unify frame of reference, center of elipse at (0,0,0)
+    origin_position = origin.position_vector().vector_add(vector(origin.frame_of_reference_correction(),0,0))
+    destination_position = destination.position_vector().vector_add(vector(destination.frame_of_reference_correction(),0,0))
+    plane_vector = origin_position.vector_mul(destination_position)
+    print(plane_vector)
+    plane_unit_vector = plane_vector.vector_div_scalar(plane_vector.vector_length())
+    print(plane_unit_vector)
+    
+    '''
+    #change k - make shure it't the right ascending node
+    #point2 = destination.position_of_ascending_node() #ascending_node
+    #point1 = origin.position_vector()
+    point1 = vector(3.98,0.2,0)
+    point2 = vector(-3.98,0.2,0)
+    
+    print(point1,point2)
+    
+    
+    #not shure if it should be + or -
+    #point1.x = point1.x + origin.frame_of_reference_correction()
+    #point2.x = point2.x + destination.frame_of_reference_correction()
+    
+    print(point1.x, point2.x)
+    #1 - x y z
+    #2 - p q r
+    print("---", point2.x**2*point1.y**2+point2.x**2*point1.z**2, "----", -point1.x**2*point2.y**2-point1.x**2*point2.z**2)
+    b2 = (point2.x**2*point1.y**2+point2.x**2*point1.z**2-point1.x**2*point2.y**2-point1.x**2*point2.z**2)/(point2.x**2-point1.x**2)
+    print(b2)
+    b = math.sqrt(b2)
+    a = math.sqrt((point2.x**2*b2)/(b2-point2.y**2-point2.z**2))
+    
+    print("a", a)
+    print("b", b)
+    #find_orbit(ship)
+    #opt.minimize(find_orbit, )
+        
+    '''
     return
+
+def find_orbit(ship):#get elipse from two points
+    
+    
+    
+    #answer = ship.velocity_vector()
+    return #answer*answer
 
 def transfer_from_massles_body():
     
