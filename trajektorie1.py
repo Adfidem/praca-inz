@@ -276,6 +276,7 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     
     
     #return to 2D elipse / convert to local frame of reference
+    #https://math.stackexchange.com/questions/1167717/transform-a-plane-to-the-xy-plane
     reference_plane_vector = vector(0,0,1)
     plane_vector = origin_position.vector_mul(destination_position)
     print(plane_vector)
@@ -283,6 +284,32 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     print(plane_unit_vector)
     print(origin_position.vector_mul(plane_unit_vector), origin_position)
     print(destination_position.vector_mul(plane_unit_vector), destination_position)
+    
+    costau = math.cos(plane_vector.angle_between_vectors(reference_plane_vector))
+    sintau = math.sin(plane_vector.angle_between_vectors(reference_plane_vector))
+    rotation_vector = plane_vector.vector_mul(reference_plane_vector)
+    unit_rotation_vector = rotation_vector.vector_div_scalar(rotation_vector.vector_length())
+    print(costau, "rad", unit_rotation_vector)
+    
+    rotation_matrix = np.array([
+            [costau+unit_rotation_vector.x**2*(1-costau), unit_rotation_vector.x*unit_rotation_vector.y*(1-costau), unit_rotation_vector.y*sintau], 
+            [unit_rotation_vector.x*unit_rotation_vector.y*(1-costau), costau+unit_rotation_vector.y**2*(1-costau),-unit_rotation_vector.x*sintau],
+            [-unit_rotation_vector.y*sintau, unit_rotation_vector.x*sintau, costau]
+    ])
+    print(rotation_matrix)
+    print(destination_position)
+    print(rotation_matrix @ destination_position.to_np_vector())
+    
+    x1 = -4
+    y1 = 0
+    x2 = 0#p
+    y2 = 2#q
+    
+    b2 = (x2**2*y1**2-x1**2*y2**2)/(x2**2-x1**2)
+    a2 = x1**2/(1-y1**2/b2)
+    
+    print(math.sqrt(a2), math.sqrt(b2))
+    
     '''
     #change k - make shure it't the right ascending node
     #point2 = destination.position_of_ascending_node() #ascending_node
