@@ -51,6 +51,8 @@ class vector:
         return math.acos((self.x*w.x+self.y*w.y+self.z*w.z)/(math.sqrt(self.x**2+self.y**2+self.z**2)*math.sqrt(w.x**2+w.y**2+w.z**2)))
     def vector_length(self):
         return math.sqrt(self.x**2+self.y**2+self.z**2)
+    def to_np_vector(self):
+        return np.array([[self.x, self.y, self.z]]).T
 #jak uzywac iloczynu wektororowego
 #A = vector(1,2,3)
 #B = vector(4,5,6)
@@ -267,12 +269,14 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     
     print(origin.frame_of_reference_correction(), destination.frame_of_reference_correction(), "f.o.r.c")
     
-    #return to 2D elipse
+    
     #unify frame of reference, center of elipse at (0,0,0)
     origin_position = origin.position_vector().vector_add(vector(origin.frame_of_reference_correction(),0,0))
     destination_position = destination.position_vector().vector_add(vector(destination.frame_of_reference_correction(),0,0))
     
     
+    #return to 2D elipse / convert to local frame of reference
+    reference_plane_vector = vector(0,0,1)
     plane_vector = origin_position.vector_mul(destination_position)
     print(plane_vector)
     plane_unit_vector = plane_vector.vector_div_scalar(plane_vector.vector_length())
