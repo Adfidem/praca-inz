@@ -17,6 +17,7 @@ from astropy.time import Time
 from astropy.constants import G  #Gravitational consatant
 from astropy.constants import M_earth  #Gravitational consatant
 from astropy.constants import M_sun  #Gravitational consatant
+from matplotlib.patches import Ellipse
 
 def period(mu,semi_major_axis_length):
     #print((2*math.pi/math.sqrt(mu))*(semi_major_axis_length**(3/2))/60/60/24,"days")
@@ -270,12 +271,12 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     print(origin.frame_of_reference_correction(), destination.frame_of_reference_correction(), "f.o.r.c")
     
     
-    #unify frame of reference, center of elipse at (0,0,0)
+    #unify frame of reference, center of ellipse at (0,0,0)
     origin_position = origin.position_vector().vector_add(vector(origin.frame_of_reference_correction(),0,0))
     destination_position = destination.position_vector().vector_add(vector(destination.frame_of_reference_correction(),0,0))
     
     
-    #return to 2D elipse / convert to local frame of reference
+    #return to 2D ellipse / convert to local frame of reference
     #https://math.stackexchange.com/questions/1167717/transform-a-plane-to-the-xy-plane
     reference_plane_vector = vector(0,0,1)
     plane_vector = origin_position.vector_mul(destination_position)
@@ -310,6 +311,14 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     
     print(math.sqrt(a2), math.sqrt(b2))
     
+    plt.figure()
+    ax = plt.gca()
+    
+    ellipse = Ellipse(xy=(0,0), width = math.sqrt(b2), height=math.sqrt(a2), edgecolor='r', fc='None', lw=2)
+    ax.set_xlim(-10, 10)
+    ax.set_ylim(-10, 10)
+    ax.add_patch(ellipse)
+    
     '''
     #change k - make shure it't the right ascending node
     #point2 = destination.position_of_ascending_node() #ascending_node
@@ -341,7 +350,7 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     '''
     return
 
-def find_orbit(ship):#get elipse from two points
+def find_orbit(ship):#get ellipse from two points
     
     
     
