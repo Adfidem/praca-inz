@@ -26,6 +26,10 @@ def days_to_seconds(time):
     return time*24*60*60
 def seconds_to_days(time):
     return time/60/60/24
+def calc_apoapsis(semi_major_axis_length):
+    return
+def calc_periapsis(semi_major_axis_length):
+    return
 
 class vector:
     #https://tomaszgolan.github.io/js-python/wyklady/js-python_w10/#wektor-iloczyn-skalarny
@@ -70,14 +74,14 @@ class param:
         self.mass = mass #kg
     def mu(self):
         return self.mass*G.value/1000000000 #km^3⋅s^–2 
-    def orbit(self, apoapsis, periapsis, eccentricity, inclination, arg_of_periapsis, orbited_body, mean_anomaly):#, epoch_MJD
+    def orbit(self, apoapsis, periapsis, eccentricity, inclination, arg_of_periapsis, orbited_body, mean_anomaly, epoch_MJD):#, epoch_MJD
         self.periapsis  = periapsis #km
         self.apoapsis = apoapsis #km
         self.eccentricity = eccentricity #[-]
         self.inclination = math.pi/2-math.radians(inclination)#input in degrees
         self.orbited_body = orbited_body#class param of the body being orbited
         self.mean_anomaly = math.radians(mean_anomaly)#input in degrees
-        #self.epoch_MJD = epoch_MJD#input modified Julian Date - I don't think this is neaded any more
+        self.epoch_MJD = epoch_MJD#input modified Julian Date - I don't think this is neaded any more
         #self.ascending_node = ascending_node#input in degrees
         self.arg_of_periapsis = math.radians(arg_of_periapsis)#input in degrees
           
@@ -258,6 +262,15 @@ class param:
     def angle_to_ascending_node(self):
         return self.position_vector().angle_between_vectors(self.position_of_ascending_node())
 
+'''
+def calculate_arg_of_periapsis(ascending_node_vector, periapsis_vector):
+    
+    return
+
+def find_periapsis_vector():
+    return
+'''
+
 def draw_elipse(semi_minor_axis_length, semi_major_axis_length):
     plt.figure()
     ax = plt.gca()
@@ -310,12 +323,15 @@ def get_2D_elipse_parameters_from_3D_points(origin, destination):
     
     semi_major_axis_length = a
     semi_minor_axis_length = b
+    foci = np.sqrt(semi_major_axis_length**2-semi_minor_axis_length**2)
+    #draw_elipse(semi_minor_axis_length, semi_major_axis_length)
     
-    draw_elipse(semi_minor_axis_length, semi_major_axis_length)
     
-    answer = np.zeros(2)
-    answer[0] = semi_major_axis_length
-    answer[1] = semi_minor_axis_length
+    
+    answer = np.zeros(3)
+    answer[1] = semi_major_axis_length-foci#periapsis
+    answer[0] = semi_major_axis_length*2-answer[1]#apoapsis
+    answer[2] = np.sqrt(1-semi_minor_axis_length**2/semi_major_axis_length**2)#eccentricity
     print(answer)
     return answer
 
@@ -325,15 +341,18 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     origin.set_time(time_of_departure)
     destination.set_time(time_of_arrival)
     
-    ship.orbit(origin.apoapsis, origin.periapsis, origin.eccentricity, origin.inclination, origin.arg_of_periapsis, origin.orbited_body, origin.mean_anomaly)
     ship.set_time(time_of_departure)
     
     print(origin.frame_of_reference_correction(), destination.frame_of_reference_correction(), "f.o.r.c")
     
-    print(destination.semi_major_axis_length())
-    axis = get_2D_elipse_parameters_from_3D_points(origin, destination)
+    print(destination.semi_major_axis_length(), destination.semi_minor_axis_length())
+    axis = get_2D_elipse_parameters_from_3D_points(origin, destination)#0 - apoapsis, 1 - periapsis, 2 - eccentricity
     
-     
+    #  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body,#### mean_anomaly[deg], epoch_MJD [MJD]
+    # inclination and arg_of_periapsis set to 0 because they are not required for further calculations
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ship.orbit(axis[0], axis[1], axis[2], 0, 0, origin.orbited_body)
+    
     
     
     '''
@@ -390,7 +409,6 @@ def planetary_rendezvous():
 def solve():
     return 0
 
-
 start_of_analysis = param("time start")
 #second, minute, hour, day, month, year
 start_of_analysis.set_time(Time('2023-01-01T00:00:00', format = 'isot'))
@@ -403,12 +421,12 @@ Sun.body(M_sun.value)
 Earth = param("Earth")
 Earth.body(M_earth.value)
 epoch_earth = Time(2000.0, format = 'jyear')
-#  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg],#### epoch_MJD [MJD]
-Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617)#365.256 #, epoch_earth.mjd
+#  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
+Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617, Time('J2000.0', format = 'jyear_str').mjd)#365.256 #, epoch_earth.mjd
 
 Earth.set_time(Time('2004-05-12T14:45:30', format = 'isot'))
 asteroid_1996FG3 = param("1996FG3")
-asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32) #, 59600.0
+asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32, 59600.0) #, 59600.0
 asteroid_1996FG3.set_time(Time('2004-05-12T14:45:30', format = 'isot'))
 
 
