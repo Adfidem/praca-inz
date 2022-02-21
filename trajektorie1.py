@@ -258,6 +258,66 @@ class param:
     def angle_to_ascending_node(self):
         return self.position_vector().angle_between_vectors(self.position_of_ascending_node())
 
+def draw_elipse(semi_minor_axis_length, semi_major_axis_length):
+    plt.figure()
+    ax = plt.gca()
+    ellipse = Ellipse(xy=(0,0), width = semi_minor_axis_length, height = semi_major_axis_length, edgecolor='r', fc='None', lw=2)
+    ax.set_xlim(-semi_major_axis_length, semi_major_axis_length)
+    ax.set_ylim(-semi_major_axis_length, semi_major_axis_length)
+    ax.add_patch(ellipse)
+
+def get_2D_elipse_parameters_from_3D_points(origin, destination):
+    #unify frame of reference, center of ellipse at (0,0,0)
+    origin_position = origin.position_vector().vector_add(vector(origin.frame_of_reference_correction(),0,0))
+    destination_position = destination.position_vector().vector_add(vector(destination.frame_of_reference_correction(),0,0))
+    
+    #return to 2D ellipse / convert to local frame of reference
+    #https://math.stackexchange.com/questions/1167717/transform-a-plane-to-the-xy-plane
+    reference_plane_vector = vector(0,0,1)
+    plane_vector = origin_position.vector_mul(destination_position)
+    #plane_unit_vector = plane_vector.vector_div_scalar(plane_vector.vector_length())
+    
+    costau = math.cos(plane_vector.angle_between_vectors(reference_plane_vector))
+    sintau = math.sin(plane_vector.angle_between_vectors(reference_plane_vector))
+    rotation_vector = plane_vector.vector_mul(reference_plane_vector)
+    unit_rotation_vector = rotation_vector.vector_div_scalar(rotation_vector.vector_length())
+    
+    rotation_matrix = np.array([
+            [costau+unit_rotation_vector.x**2*(1-costau), unit_rotation_vector.x*unit_rotation_vector.y*(1-costau), unit_rotation_vector.y*sintau], 
+            [unit_rotation_vector.x*unit_rotation_vector.y*(1-costau), costau+unit_rotation_vector.y**2*(1-costau),-unit_rotation_vector.x*sintau],
+            [-unit_rotation_vector.y*sintau, unit_rotation_vector.x*sintau, costau]
+    ])
+    
+    destination_position_2D = rotation_matrix @ destination_position.to_np_vector()
+    origin_position_2D = rotation_matrix @ origin_position.to_np_vector()
+    
+    x1 = origin_position_2D[[0]]
+    y1 = origin_position_2D[[1]]
+    x2 = destination_position_2D[[0]]
+    y2 = destination_position_2D[[1]]
+    
+    if(origin_position_2D[[2]] > 1 or destination_position_2D[[2]] > 1):
+        string = ' '.join(["get_2D_elipse_parameters_from_3D_point failed to nulify 'z' coordinate", np.array2string(origin_position_2D), "derived origin coordinate \n" , np.array2string(destination_position_2D), "derived estinatio coordinate"])
+        sys.exit(string)
+    b2 = (x2**2*y1**2-x1**2*y2**2)/(x2**2-x1**2)
+    a = np.sqrt(x1**2/(1-y1**2/b2))
+    b = np.sqrt(b2)
+    
+    if(b > a):#make shure semi_major_axis_length > semi_minor_axis_length
+        j = a
+        a = b
+        b = j
+    
+    semi_major_axis_length = a
+    semi_minor_axis_length = b
+    
+    draw_elipse(semi_minor_axis_length, semi_major_axis_length)
+    
+    answer = np.zeros(2)
+    answer[0] = semi_major_axis_length
+    answer[1] = semi_minor_axis_length
+    print(answer)
+    return answer
 
 
 def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destination):#in MJD
@@ -270,54 +330,11 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     
     print(origin.frame_of_reference_correction(), destination.frame_of_reference_correction(), "f.o.r.c")
     
+    print(destination.semi_major_axis_length())
+    axis = get_2D_elipse_parameters_from_3D_points(origin, destination)
     
-    #unify frame of reference, center of ellipse at (0,0,0)
-    origin_position = origin.position_vector().vector_add(vector(origin.frame_of_reference_correction(),0,0))
-    destination_position = destination.position_vector().vector_add(vector(destination.frame_of_reference_correction(),0,0))
+     
     
-    
-    #return to 2D ellipse / convert to local frame of reference
-    #https://math.stackexchange.com/questions/1167717/transform-a-plane-to-the-xy-plane
-    reference_plane_vector = vector(0,0,1)
-    plane_vector = origin_position.vector_mul(destination_position)
-    print(plane_vector)
-    plane_unit_vector = plane_vector.vector_div_scalar(plane_vector.vector_length())
-    print(plane_unit_vector)
-    print(origin_position.vector_mul(plane_unit_vector), origin_position)
-    print(destination_position.vector_mul(plane_unit_vector), destination_position)
-    
-    costau = math.cos(plane_vector.angle_between_vectors(reference_plane_vector))
-    sintau = math.sin(plane_vector.angle_between_vectors(reference_plane_vector))
-    rotation_vector = plane_vector.vector_mul(reference_plane_vector)
-    unit_rotation_vector = rotation_vector.vector_div_scalar(rotation_vector.vector_length())
-    print(costau, "rad", unit_rotation_vector)
-    
-    rotation_matrix = np.array([
-            [costau+unit_rotation_vector.x**2*(1-costau), unit_rotation_vector.x*unit_rotation_vector.y*(1-costau), unit_rotation_vector.y*sintau], 
-            [unit_rotation_vector.x*unit_rotation_vector.y*(1-costau), costau+unit_rotation_vector.y**2*(1-costau),-unit_rotation_vector.x*sintau],
-            [-unit_rotation_vector.y*sintau, unit_rotation_vector.x*sintau, costau]
-    ])
-    print(rotation_matrix)
-    print(destination_position)
-    print(rotation_matrix @ destination_position.to_np_vector())
-    
-    x1 = -4
-    y1 = 0
-    x2 = 0#p
-    y2 = 2#q
-    
-    b2 = (x2**2*y1**2-x1**2*y2**2)/(x2**2-x1**2)
-    a2 = x1**2/(1-y1**2/b2)
-    
-    print(math.sqrt(a2), math.sqrt(b2))
-    
-    plt.figure()
-    ax = plt.gca()
-    
-    ellipse = Ellipse(xy=(0,0), width = math.sqrt(b2), height=math.sqrt(a2), edgecolor='r', fc='None', lw=2)
-    ax.set_xlim(-10, 10)
-    ax.set_ylim(-10, 10)
-    ax.add_patch(ellipse)
     
     '''
     #change k - make shure it't the right ascending node
