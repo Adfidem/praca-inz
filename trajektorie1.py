@@ -123,13 +123,13 @@ class param:
         half_ellipse_area = math.pi*self.semi_major_axis_length()*self.semi_minor_axis_length()/2
         P = period(self.orbited_body.mu(), self.semi_major_axis_length())
         time_at_periapsis = self.mean_anomaly/(2*np.pi/P)+days_to_seconds(self.epoch_MJD)
-        print(self.name)
-        print(seconds_to_days(time_at_periapsis), "time_at_periapsis,")
+        #print(self.name)
+        #print(seconds_to_days(time_at_periapsis), "time_at_periapsis,")
         unit_time = time_current - time_at_periapsis
-        print(seconds_to_days(unit_time), "unit_time")
+        #print(seconds_to_days(unit_time), "unit_time")
         time0 = P/2#time of half a orbit
         unit_time = unit_time % P #definiuje pozycje na orbicie (narazie zakladajac ze poczotek czasu to kiedy obiekt byl na peryapsie)
-        print(seconds_to_days(unit_time), "unit time 2")
+        #print(seconds_to_days(unit_time), "unit time 2")
         if unit_time == P/2:#check extreems (apoapsis)
             return math.pi
         if unit_time == 0:#priapsis
@@ -269,16 +269,33 @@ class param:
         return self.position_vector().angle_between_vectors(self.position_of_ascending_node())
 
 '''
-def calculate_arg_of_periapsis(ascending_node_vector, periapsis_vector):
-    
-    return
+def ellipse_function_3D(coordinates, a, b):
+    X, Y, Z = coordinates
+    return X**2/a**2+Y**2/b**2+Z**2/b**2-1
 
-'''
 def eccentricity_vector(self):#vector pointing towards the periapsis
         e 
         return
-
-def draw_elipse(semi_minor_axis_length, semi_major_axis_length):
+'''
+def point_on_2D_ellipse(X,A,B):
+    Y = B*math.sqrt(1-((X)**2)/(A**2))
+    distance = vector(X, Y, 0)
+    print(X, Y, "XY")
+    return distance.vector_length()
+def find_Xmax_of_2D_ellipse(X,A,B):
+    return (1-X**2/A**2)*B**2
+    '''
+    if( guess <= 0.001 and guess >= -0.001):
+        return 0
+    elif(guess < 0.001):
+        return 1
+    elif(guess > 0.001):
+        return 2
+    else:
+        string = ' '.join(["find_Xmax_of_2D_ellipse - switch error with guess =", np.array2string(guess)])
+        sys.exit(string)
+    '''
+def draw_ellipse(semi_minor_axis_length, semi_major_axis_length):
     plt.figure()
     ax = plt.gca()
     ellipse = Ellipse(xy=(0,0), width = semi_minor_axis_length, height = semi_major_axis_length, edgecolor='r', fc='None', lw=2)
@@ -286,7 +303,7 @@ def draw_elipse(semi_minor_axis_length, semi_major_axis_length):
     ax.set_ylim(-semi_major_axis_length, semi_major_axis_length)
     ax.add_patch(ellipse)
 
-def get_2D_elipse_parameters_from_3D_points(origin, destination):
+def get_2D_ellipse_parameters_from_3D_points(origin, destination):
     #unify frame of reference, center of ellipse at (0,0,0)
     origin_position = origin.position_vector().vector_add(vector(origin.frame_of_reference_correction(),0,0))
     destination_position = destination.position_vector().vector_add(vector(destination.frame_of_reference_correction(),0,0))
@@ -309,6 +326,7 @@ def get_2D_elipse_parameters_from_3D_points(origin, destination):
             [-unit_rotation_vector.y*sintau, unit_rotation_vector.x*sintau, costau]
     ])
     
+    
     destination_position_2D = rotation_matrix @ destination_position.to_np_vector()
     origin_position_2D = rotation_matrix @ origin_position.to_np_vector()
     
@@ -318,7 +336,7 @@ def get_2D_elipse_parameters_from_3D_points(origin, destination):
     y2 = destination_position_2D[[1]]
     
     if(origin_position_2D[[2]] > 1 or destination_position_2D[[2]] > 1):
-        string = ' '.join(["get_2D_elipse_parameters_from_3D_point failed to nulify 'z' coordinate", np.array2string(origin_position_2D), "derived origin coordinate \n" , np.array2string(destination_position_2D), "derived estinatio coordinate"])
+        string = ' '.join(["get_2D_ellipse_parameters_from_3D_point failed to nulify 'z' coordinate", np.array2string(origin_position_2D), "derived origin coordinate \n" , np.array2string(destination_position_2D), "derived estinatio coordinate"])
         sys.exit(string)
     b2 = (x2**2*y1**2-x1**2*y2**2)/(x2**2-x1**2)
     a = np.sqrt(x1**2/(1-y1**2/b2))
@@ -332,10 +350,38 @@ def get_2D_elipse_parameters_from_3D_points(origin, destination):
     semi_major_axis_length = a
     semi_minor_axis_length = b
     foci = np.sqrt(semi_major_axis_length**2-semi_minor_axis_length**2)
-    #draw_elipse(semi_minor_axis_length, semi_major_axis_length)
+    #draw_ellipse(semi_minor_axis_length, semi_major_axis_length)
     
+    #lazy method, do sqrt!!!!!
+    boundry = 0
+    previous = -1
+    step = abs(origin_position_2D[[0]])
+    while(1==1):
+        Y2 = find_Xmax_of_2D_ellipse(boundry,a,b)
+        #print(step, "step", previous, "previous", boundry, "boundry")
+        if(abs(step) < 1):
+            break
+        elif(Y2 > previous):
+            previous = Y2
+            boundry = boundry+step
+            if(boundry % previous < step):
+                step = step/2
+        elif(Y2 < previous):
+            step = step/2
+            previous = Y2
+            boundry = boundry-step  
+            if(boundry % previous < step):
+                step = step/2
+        else:
+            string = ' '.join(["get_2D_ellipse_parameters_from_3D_point failed find eccentricity_vector boundry", np.array2string(boundry)])
+            sys.exit(string)
+    boundry = np.sqrt(previous)
+    print(boundry, "boundry",  origin_position_2D[[0]], destination_position_2D[[0]])
     
-    
+    eccentricity_vector = opt.shgo(point_on_2D_ellipse, 0, args=(a,b), bounds=(-boundry,boundry))
+    opt.sh
+    print(eccentricity_vector.x)
+    #eccentricity_vector_2D subtract frame_of_reference_correction !!!, rotate multiple times
     answer = np.zeros(5)
     answer[1] = semi_major_axis_length-foci#periapsis
     answer[0] = semi_major_axis_length*2-answer[1]#apoapsis
@@ -356,7 +402,7 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     print(origin.frame_of_reference_correction(), destination.frame_of_reference_correction(), "f.o.r.c")
     
     print(destination.semi_major_axis_length(), destination.semi_minor_axis_length())
-    axis = get_2D_elipse_parameters_from_3D_points(origin, destination)#0 - apoapsis, 1 - periapsis, 2 - eccentricity
+    axis = get_2D_ellipse_parameters_from_3D_points(origin, destination)#0 - apoapsis, 1 - periapsis, 2 - eccentricity
     
     #  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
     # inclination and arg_of_periapsis set to 0 because they are not required for further calculations
