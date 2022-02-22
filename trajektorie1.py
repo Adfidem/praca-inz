@@ -118,12 +118,18 @@ class param:
         return quad(self.ellipse_function,0, x, args=(A,B))[0]
     
     def azimuth_angle(self):#returns angle in rad + arg_of_periapsis (so true anomaly + arg_of_periapsis)
+        
         time_current = days_to_seconds(self.MJD)#days_to_seconds(self.Julian_Day())
         half_ellipse_area = math.pi*self.semi_major_axis_length()*self.semi_minor_axis_length()/2
         P = period(self.orbited_body.mu(), self.semi_major_axis_length())
+        time_at_periapsis = self.mean_anomaly/(2*np.pi/P)+days_to_seconds(self.epoch_MJD)
+        print(self.name)
+        print(seconds_to_days(time_at_periapsis), "time_at_periapsis,")
+        unit_time = time_current - time_at_periapsis
+        print(seconds_to_days(unit_time), "unit_time")
         time0 = P/2#time of half a orbit
-        unit_time = time_current % P #definiuje pozycje na orbicie (narazie zakladajac ze poczotek czasu to kiedy obiekt byl na peryapsie)
-        #print(seconds_to_days(unit_time), "unit time")
+        unit_time = unit_time % P #definiuje pozycje na orbicie (narazie zakladajac ze poczotek czasu to kiedy obiekt byl na peryapsie)
+        print(seconds_to_days(unit_time), "unit time 2")
         if unit_time == P/2:#check extreems (apoapsis)
             return math.pi
         if unit_time == 0:#priapsis
@@ -236,14 +242,14 @@ class param:
         #print(math.sqrt(self.semi_major_axis_length()*self.semi_major_axis_length()-self.semi_minor_axis_length()*self.semi_minor_axis_length()),"frame x correction")
         return math.sqrt(self.semi_major_axis_length()*self.semi_major_axis_length()-self.semi_minor_axis_length()*self.semi_minor_axis_length())
     def position_vector(self):
-        calculated_azimuth_angle_and_arg_of_periapsis = self.azimuth_angle() + self.arg_of_periapsis
+        calculated_azimuth_angle_and_arg_of_periapsis = self.azimuth_angle() #+ self.arg_of_periapsis
         return vector(self.semi_major_axis_length()*self.sin(self.inclination)*self.cos(calculated_azimuth_angle_and_arg_of_periapsis)-self.frame_of_reference_correction(), self.semi_minor_axis_length()*self.sin(self.inclination)*self.sin(calculated_azimuth_angle_and_arg_of_periapsis), self.semi_minor_axis_length()*self.cos(self.inclination))
     def distance_from_orbited_body(self):
         r = self.position_vector()
         return math.sqrt(r*r)
     def speed(self):
         return math.sqrt(self.orbited_body.mu()*(2/self.distance_from_orbited_body()-1/self.semi_major_axis_length()))
-        
+    
     def velocity_vector(self):
         #https://math.stackexchange.com/questions/655853/ellipse-tangents-in-3d
         c = vector(-self.frame_of_reference_correction(),0,0)#center of ellipse, changed to "-" correction
@@ -267,9 +273,10 @@ def calculate_arg_of_periapsis(ascending_node_vector, periapsis_vector):
     
     return
 
-def find_periapsis_vector():
-    return
 '''
+def eccentricity_vector(self):#vector pointing towards the periapsis
+        e 
+        return
 
 def draw_elipse(semi_minor_axis_length, semi_major_axis_length):
     plt.figure()
@@ -291,6 +298,7 @@ def get_2D_elipse_parameters_from_3D_points(origin, destination):
     #plane_unit_vector = plane_vector.vector_div_scalar(plane_vector.vector_length())
     
     costau = math.cos(plane_vector.angle_between_vectors(reference_plane_vector))
+    #print(np.degrees(plane_vector.angle_between_vectors(reference_plane_vector)-np.pi/2), "tau", np.degrees(origin.inclination), np.degrees(destination.inclination))
     sintau = math.sin(plane_vector.angle_between_vectors(reference_plane_vector))
     rotation_vector = plane_vector.vector_mul(reference_plane_vector)
     unit_rotation_vector = rotation_vector.vector_div_scalar(rotation_vector.vector_length())
@@ -328,10 +336,12 @@ def get_2D_elipse_parameters_from_3D_points(origin, destination):
     
     
     
-    answer = np.zeros(3)
+    answer = np.zeros(5)
     answer[1] = semi_major_axis_length-foci#periapsis
     answer[0] = semi_major_axis_length*2-answer[1]#apoapsis
     answer[2] = np.sqrt(1-semi_minor_axis_length**2/semi_major_axis_length**2)#eccentricity
+    answer[3] = np.degrees(plane_vector.angle_between_vectors(reference_plane_vector)-np.pi/2)#inclination
+    answer[4] = 0 #arg_of_periapsis
     print(answer)
     return answer
 
@@ -348,10 +358,10 @@ def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destina
     print(destination.semi_major_axis_length(), destination.semi_minor_axis_length())
     axis = get_2D_elipse_parameters_from_3D_points(origin, destination)#0 - apoapsis, 1 - periapsis, 2 - eccentricity
     
-    #  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body,#### mean_anomaly[deg], epoch_MJD [MJD]
+    #  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
     # inclination and arg_of_periapsis set to 0 because they are not required for further calculations
     #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ship.orbit(axis[0], axis[1], axis[2], 0, 0, origin.orbited_body)
+    ship.orbit(axis[0], axis[1], axis[2], axis[3], axis[4], origin.orbited_body)
     
     
     
