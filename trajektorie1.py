@@ -30,6 +30,32 @@ def calc_apoapsis(semi_major_axis_length):
     return
 def calc_periapsis(semi_major_axis_length):
     return
+def rotate_point(point_vector, rotation_axis_unit_vector, angle):
+    #rotate_point(target_plane_vector, reference_plane_vector, point):
+    
+    costau = np.cos(angle)
+    sintau = np.sin(angle)
+    
+    '''
+    costau = math.cos(target_plane_vector.angle_between_vectors(reference_plane_vector))
+    #print(np.degrees(plane_vector.angle_between_vectors(reference_plane_vector)-np.pi/2), "tau", np.degrees(origin.inclination), np.degrees(destination.inclination))
+    sintau = math.sin(target_plane_vector.angle_between_vectors(reference_plane_vector))
+    rotation_vector = target_plane_vector.vector_mul(reference_plane_vector)
+    unit_rotation_vector = rotation_vector.vector_div_scalar(rotation_vector.vector_length())
+    rotation_matrix = np.array([
+            [costau+unit_rotation_vector.x**2*(1-costau), unit_rotation_vector.x*unit_rotation_vector.y*(1-costau), unit_rotation_vector.y*sintau], 
+            [unit_rotation_vector.x*unit_rotation_vector.y*(1-costau), costau+unit_rotation_vector.y**2*(1-costau),-unit_rotation_vector.x*sintau],
+            [-unit_rotation_vector.y*sintau, unit_rotation_vector.x*sintau, costau]
+    ])
+    '''
+    rotation_matrix = np.array([
+            [costau+rotation_axis_unit_vector.x**2*(1-costau), rotation_axis_unit_vector.x*rotation_axis_unit_vector.y*(1-costau)-rotation_axis_unit_vector.z*sintau, rotation_axis_unit_vector.x*rotation_axis_unit_vector.z*(1-costau)+rotation_axis_unit_vector.y*sintau], 
+            [rotation_axis_unit_vector.x*rotation_axis_unit_vector.y*(1-costau)+rotation_axis_unit_vector.z*sintau, costau+rotation_axis_unit_vector.y**2*(1-costau), rotation_axis_unit_vector.y*rotation_axis_unit_vector.z*(1-costau)-rotation_axis_unit_vector.x*sintau],
+            [rotation_axis_unit_vector.z*rotation_axis_unit_vector.x*(1-costau)-rotation_axis_unit_vector.y*sintau, rotation_axis_unit_vector.z*rotation_axis_unit_vector.y*(1-costau)+rotation_axis_unit_vector.x*sintau, costau+rotation_axis_unit_vector.z**2*(1-costau)]
+    ])
+    point_vector = rotation_matrix @ point_vector.to_np_vector()
+    return np_vector_to_standard_vector(point_vector)
+
 
 class vector:
     #https://tomaszgolan.github.io/js-python/wyklady/js-python_w10/#wektor-iloczyn-skalarny
@@ -58,6 +84,9 @@ class vector:
         return math.sqrt(self.x**2+self.y**2+self.z**2)
     def to_np_vector(self):
         return np.array([[self.x, self.y, self.z]]).T
+
+def np_vector_to_standard_vector(np_array):
+    return vector(np_array[0].item(), np_array[1].item(), np_array[2].item())
 #jak uzywac iloczynu wektororowego
 #A = vector(1,2,3)
 #B = vector(4,5,6)
@@ -74,38 +103,44 @@ class param:
         self.mass = mass #kg
     def mu(self):
         return self.mass*G.value/1000000000 #km^3⋅s^–2 
-    def orbit(self, apoapsis, periapsis, eccentricity, inclination, arg_of_periapsis, orbited_body, mean_anomaly, epoch_MJD):#, epoch_MJD
+    def orbit(self, apoapsis, periapsis, eccentricity, inclination, arg_of_periapsis, orbited_body, mean_anomaly, epoch_MJD, ascending_node):#, epoch_MJD
         self.periapsis  = periapsis #km
         self.apoapsis = apoapsis #km
         self.eccentricity = eccentricity #[-]
-        self.inclination = math.pi/2-math.radians(inclination)#input in degrees
+        self.inclination = math.radians(inclination)#input in degrees #math.pi/2-
         self.orbited_body = orbited_body#class param of the body being orbited
         self.mean_anomaly = math.radians(mean_anomaly)#input in degrees
         self.epoch_MJD = epoch_MJD#input modified Julian Date - I don't think this is neaded any more
-        #self.ascending_node = ascending_node#input in degrees
         self.arg_of_periapsis = math.radians(arg_of_periapsis)#input in degrees
+        self.ascending_node = math.radians(ascending_node)#input in degrees
           
     def semi_major_axis_length(self):#a
         return (self.periapsis+self.apoapsis)/2
     def semi_major_axis_unit_vector(self):
-        answer = vector(self.semi_major_axis_length()*self.sin(self.inclination)*self.cos(self.arg_of_periapsis), self.semi_minor_axis_length()*self.sin(self.inclination)*self.sin(self.arg_of_periapsis), self.semi_minor_axis_length()*self.cos(self.inclination))
+        answer = vector(self.semi_major_axis_length(), 0, 0)
+        answer = rotate_point(answer, vector(0,0,1), self.arg_of_periapsis)
+        inclination_rotation_vector = rotate_point(vector(1,0,0), vector(0,0,1), self.ascending_node)
+        answer = rotate_point(answer, inclination_rotation_vector, self.inclination)
         return answer.vector_div_scalar(self.semi_major_axis_length())
     def semi_minor_axis_length(self):#b or c
         return (self.periapsis+self.apoapsis)/2*math.sqrt(1-self.eccentricity*self.eccentricity)
     def semi_minor_axis_unit_vector(self):
-        answer = vector(self.semi_major_axis_length()*self.sin(self.inclination)*self.cos(self.arg_of_periapsis+math.pi/2), self.semi_minor_axis_length()*self.sin(self.inclination)*self.sin(self.arg_of_periapsis+math.pi/2), self.semi_minor_axis_length()*self.cos(self.inclination))
+        answer = vector(0, self.semi_minor_axis_length(), 0)
+        answer = rotate_point(answer, vector(0,0,1), self.arg_of_periapsis)
+        inclination_rotation_vector = rotate_point(vector(1,0,0), vector(0,0,1), self.ascending_node)
+        answer = rotate_point(answer, inclination_rotation_vector, self.inclination)
         return  answer.vector_div_scalar(self.semi_minor_axis_length())
     #cos i sin zapewniaja sprawdzaja czy kat nie jest zbyt blisko pi/2 i pi
     def cos(self, angle_rad):
-        if abs(angle_rad) > math.pi/2-0.00000001 and abs(angle_rad) < math.pi/2+0.00000001:
+        if abs(angle_rad) > np.pi/2-0.00000001 and abs(angle_rad) < np.pi/2+0.00000001:
             return 0
         else:
-            return math.cos(angle_rad)
+            return np.cos(angle_rad)
     def sin(self, angle_rad):
-        if abs(angle_rad) > math.pi-0.00000001 and abs(angle_rad) < math.pi+0.00000001:
+        if abs(angle_rad) > np.pi-0.00000001 and abs(angle_rad) < np.pi+0.00000001:
             return 0
         else:
-            return math.sin(angle_rad)
+            return np.sin(angle_rad)
     
     def set_time(self, isot_time):
         self.MJD = isot_time.mjd
@@ -117,7 +152,7 @@ class param:
         B = self.semi_minor_axis_length()
         return quad(self.ellipse_function,0, x, args=(A,B))[0]
     
-    def azimuth_angle(self):#returns angle in rad + arg_of_periapsis (so true anomaly + arg_of_periapsis)
+    def azimuth_angle(self):#returns angle in rad (so true anomaly)
         
         time_current = days_to_seconds(self.MJD)#days_to_seconds(self.Julian_Day())
         half_ellipse_area = math.pi*self.semi_major_axis_length()*self.semi_minor_axis_length()/2
@@ -150,7 +185,7 @@ class param:
         error = np.zeros(3) 
         error[0] = self.semi_major_axis_length()#guessed x
         error[1] = 2#scale of guess
-        error[2] = 0 #save it right (1) or left (2) of rotation point
+        error[2] = 0 #save if right (1) or left (2) of rotation point
         accuracy = 1 #km along x axis
         x_previous = 0
         #print(error[0], "initial x")
@@ -209,26 +244,45 @@ class param:
             print("and error[1] at", error[1])
             print(error[0]/(self.semi_major_axis_length()*2)*100 , "% x - of boundry line______________")'''
         
+        #print(x_previous, error[0], "x")
+        #0 - true_anomaly [rad], 1 - radius [km], 2 - x [km], 3 - y [km]
+        angle = np.zeros(4)
         
+            
         if error[2] == 1:
             if which_half_of_orbit == 1:#first half
                 #print("----------- exit angle 1:right of rotation_point, first half of orbit")
-                angle = math.pi-math.atan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(error[0]-rotation_point))
+                angle[0] = np.pi-np.arctan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(error[0]-rotation_point))
+                angle[1] = (error[0]-rotation_point)/np.cos(angle[0])
+                angle[2] = error[0]-rotation_point
+                angle[3] = self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())
                 return angle
             elif which_half_of_orbit == -1:#second half
                 #print("----------- exit angle 2:right of rotation_point, second half of orbit")
-                angle = 2*math.pi-math.atan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(error[0]-rotation_point))
+                angle[0] = 2*np.pi-np.arctan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(error[0]-rotation_point))
+                angle[1] = (error[0]-rotation_point)/np.cos(angle[0])
+                angle[1] = (error[0]-rotation_point)/np.cos(angle[0])
+                angle[2] = error[0]-rotation_point
+                angle[3] = self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())
                 return angle
             else:
                 sys.exit("azimuth_angle failed to determin whether angle is + ro - on the y axis")
         elif error[2] == 2:
             if which_half_of_orbit == 1:
                 #print("----------- exit angle 3:left of rotation_point, first half of orbit")
-                angle = math.atan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(rotation_point-error[0]))
+                angle[0] = np.arctan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(rotation_point-error[0]))
+                angle[1] = (rotation_point-error[0])/np.cos(angle[0])
+                angle[1] = (error[0]-rotation_point)/np.cos(angle[0])
+                angle[2] = error[0]-rotation_point
+                angle[3] = self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())
                 return angle
             elif which_half_of_orbit == -1:
                 #print("----------- exit angle 4:left of rotation_point, second half of orbit")
-                angle = math.pi+math.atan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(rotation_point-error[0]))
+                angle[0] = np.pi+np.arctan(self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())/(rotation_point-error[0]))
+                angle[1] = (rotation_point-error[0])/np.cos(angle[0])
+                angle[1] = (error[0]-rotation_point)/np.cos(angle[0])
+                angle[2] = error[0]-rotation_point
+                angle[3] = self.ellipse_function(error[0],self.semi_major_axis_length(),self.semi_minor_axis_length())
                 return angle 
             else:
                 sys.exit("azimuth_angle failed to determine whether angle is + ro - on the y axis")
@@ -242,8 +296,12 @@ class param:
         #print(math.sqrt(self.semi_major_axis_length()*self.semi_major_axis_length()-self.semi_minor_axis_length()*self.semi_minor_axis_length()),"frame x correction")
         return math.sqrt(self.semi_major_axis_length()*self.semi_major_axis_length()-self.semi_minor_axis_length()*self.semi_minor_axis_length())
     def position_vector(self):
-        calculated_azimuth_angle_and_arg_of_periapsis = self.azimuth_angle() #+ self.arg_of_periapsis
-        return vector(self.semi_major_axis_length()*self.sin(self.inclination)*self.cos(calculated_azimuth_angle_and_arg_of_periapsis)-self.frame_of_reference_correction(), self.semi_minor_axis_length()*self.sin(self.inclination)*self.sin(calculated_azimuth_angle_and_arg_of_periapsis), self.semi_minor_axis_length()*self.cos(self.inclination))
+        position_data = self.azimuth_angle()
+        position = vector(position_data[2], position_data[3], 0)
+        position = rotate_point(position, vector(0,0,1), self.arg_of_periapsis)
+        inclination_rotation_vector = rotate_point(vector(1,0,0), vector(0,0,1), self.ascending_node)
+        position = rotate_point(position, inclination_rotation_vector, self.inclination)
+        return position
     def distance_from_orbited_body(self):
         r = self.position_vector()
         return math.sqrt(r*r)
@@ -253,7 +311,7 @@ class param:
     def velocity_vector(self):
         #https://math.stackexchange.com/questions/655853/ellipse-tangents-in-3d
         c = vector(-self.frame_of_reference_correction(),0,0)#center of ellipse, changed to "-" correction
-        paramiter = self.azimuth_angle()
+        paramiter = self.azimuth_angle()[0]
         u = self.semi_major_axis_unit_vector().vector_mul_scalar(self.semi_major_axis_length()*math.sin(paramiter))
         v = self.semi_minor_axis_unit_vector().vector_mul_scalar(self.semi_minor_axis_length()*math.cos(paramiter))
         tangent_unit_vector = c.vector_subtract(u.vector_add(v))
@@ -304,40 +362,76 @@ def draw_ellipse(semi_minor_axis_length, semi_major_axis_length):
     ax.add_patch(ellipse)
 
 def get_2D_ellipse_parameters_from_3D_points(origin, destination):
-    #unify frame of reference, center of ellipse at (0,0,0)
-    origin_position = origin.position_vector().vector_add(vector(origin.frame_of_reference_correction(),0,0))
-    destination_position = destination.position_vector().vector_add(vector(destination.frame_of_reference_correction(),0,0))
+    #unify frame of reference, center of ellipse at (0,0,0) <- changed not doing this any more delete comment later!!!!!!!!!!!!!!
+    #now frame of reference at, foci
+    origin_position = origin.position_vector()#.vector_add(vector(origin.frame_of_reference_correction(),0,0))
+    destination_position = destination.position_vector()#.vector_add(vector(destination.frame_of_reference_correction(),0,0))
     
+    #print(origin.azimuth_angle())
     #return to 2D ellipse / convert to local frame of reference
     #https://math.stackexchange.com/questions/1167717/transform-a-plane-to-the-xy-plane
-    reference_plane_vector = vector(0,0,1)
+    #reference_plane_vector = vector(0,0,1)
     plane_vector = origin_position.vector_mul(destination_position)
     #plane_unit_vector = plane_vector.vector_div_scalar(plane_vector.vector_length())
     
-    costau = math.cos(plane_vector.angle_between_vectors(reference_plane_vector))
-    #print(np.degrees(plane_vector.angle_between_vectors(reference_plane_vector)-np.pi/2), "tau", np.degrees(origin.inclination), np.degrees(destination.inclination))
-    sintau = math.sin(plane_vector.angle_between_vectors(reference_plane_vector))
-    rotation_vector = plane_vector.vector_mul(reference_plane_vector)
-    unit_rotation_vector = rotation_vector.vector_div_scalar(rotation_vector.vector_length())
+    print(origin_position)
+    print(destination_position)
     
-    rotation_matrix = np.array([
-            [costau+unit_rotation_vector.x**2*(1-costau), unit_rotation_vector.x*unit_rotation_vector.y*(1-costau), unit_rotation_vector.y*sintau], 
-            [unit_rotation_vector.x*unit_rotation_vector.y*(1-costau), costau+unit_rotation_vector.y**2*(1-costau),-unit_rotation_vector.x*sintau],
-            [-unit_rotation_vector.y*sintau, unit_rotation_vector.x*sintau, costau]
-    ])
+    #inclination = plane_vector.angle_between_vectors(reference_plane_vector)
+    inclination = np.arccos(plane_vector.z/plane_vector.vector_length())
+
+    print(np.degrees(inclination), "inclination")
+    print(origin_position.z/np.cos(inclination), "b")
+    print(destination_position.z/np.cos(inclination), "b")
     
     
-    destination_position_2D = rotation_matrix @ destination_position.to_np_vector()
-    origin_position_2D = rotation_matrix @ origin_position.to_np_vector()
     
-    x1 = origin_position_2D[[0]]
-    y1 = origin_position_2D[[1]]
-    x2 = destination_position_2D[[0]]
-    y2 = destination_position_2D[[1]]
+    """
+    
+    
+    
+    
+    
+    x1 = origin_position_2D[[0]].item()
+    y1 = origin_position_2D[[1]].item()
+    x2 = destination_position_2D[[0]].item()
+    y2 = destination_position_2D[[1]].item()
+    x3 = -origin_position_2D[[0]].item()+1e-5
+    y3 = -origin_position_2D[[1]].item()-1e-5
+    x4 = -destination_position_2D[[0]].item()+1e-6
+    y4 = -destination_position_2D[[1]].item()-1e-5
+    
     
     if(origin_position_2D[[2]] > 1 or destination_position_2D[[2]] > 1):
         string = ' '.join(["get_2D_ellipse_parameters_from_3D_point failed to nulify 'z' coordinate", np.array2string(origin_position_2D), "derived origin coordinate \n" , np.array2string(destination_position_2D), "derived estinatio coordinate"])
         sys.exit(string)
+        
+    print(x1,y1)
+    print(x2,y2)
+    print(x3,y3)
+    print(x4,y4)
+    
+    ellipse_paramiter_matrix = np.array([
+            [x1**2, y1**2, x1*y1, 1],
+            [x2**2, y2**2, x2*y2, 1],
+            [x3**2, y3**2, x3*y3, 1],
+            [x4**2, y4**2, x4*y4, 1]
+    ])
+    print(ellipse_paramiter_matrix)
+    
+    matrix_of_zeros = np.array([
+            [0],
+            [0],
+            [0],
+            [0]
+    ])
+    
+    print(matrix_of_zeros)
+    
+    print(np.linalg.solve(ellipse_paramiter_matrix,matrix_of_zeros))
+    
+    
+    #remove later
     b2 = (x2**2*y1**2-x1**2*y2**2)/(x2**2-x1**2)
     a = np.sqrt(x1**2/(1-y1**2/b2))
     b = np.sqrt(b2)
@@ -352,7 +446,7 @@ def get_2D_ellipse_parameters_from_3D_points(origin, destination):
     foci = np.sqrt(semi_major_axis_length**2-semi_minor_axis_length**2)
     #draw_ellipse(semi_minor_axis_length, semi_major_axis_length)
     
-    #lazy method, do sqrt!!!!!
+    # do sqrt!!!!!
     boundry = 0
     previous = -1
     step = abs(origin_position_2D[[0]])
@@ -381,33 +475,34 @@ def get_2D_ellipse_parameters_from_3D_points(origin, destination):
     eccentricity_vector = opt.shgo(point_on_2D_ellipse, 0, args=(a,b), bounds=(-boundry,boundry))
     opt.sh
     print(eccentricity_vector.x)
+    """
     #eccentricity_vector_2D subtract frame_of_reference_correction !!!, rotate multiple times
     answer = np.zeros(5)
-    answer[1] = semi_major_axis_length-foci#periapsis
-    answer[0] = semi_major_axis_length*2-answer[1]#apoapsis
-    answer[2] = np.sqrt(1-semi_minor_axis_length**2/semi_major_axis_length**2)#eccentricity
-    answer[3] = np.degrees(plane_vector.angle_between_vectors(reference_plane_vector)-np.pi/2)#inclination
-    answer[4] = 0 #arg_of_periapsis
+    #answer[1] = semi_major_axis_length-foci#periapsis
+    #answer[0] = semi_major_axis_length*2-answer[1]#apoapsis
+    #answer[2] = np.sqrt(1-semi_minor_axis_length**2/semi_major_axis_length**2)#eccentricity
+    #answer[3] = np.degrees(plane_vector.angle_between_vectors(reference_plane_vector)-np.pi/2)#inclination
+    #answer[4] = 0 #arg_of_periapsis
     print(answer)
     return answer
 
 
 def transfer_to_massles_body(time_of_departure, time_of_arrival, origin ,destination):#in MJD
-    ship = param("ship")
+    transfer_orbit = param("transfer_orbit")
     origin.set_time(time_of_departure)
     destination.set_time(time_of_arrival)
     
-    ship.set_time(time_of_departure)
+    transfer_orbit.set_time(time_of_departure)
     
     print(origin.frame_of_reference_correction(), destination.frame_of_reference_correction(), "f.o.r.c")
     
     print(destination.semi_major_axis_length(), destination.semi_minor_axis_length())
     axis = get_2D_ellipse_parameters_from_3D_points(origin, destination)#0 - apoapsis, 1 - periapsis, 2 - eccentricity
     
-    #  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
+    #  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD], ascending_node [deg]
     # inclination and arg_of_periapsis set to 0 because they are not required for further calculations
     #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ship.orbit(axis[0], axis[1], axis[2], axis[3], axis[4], origin.orbited_body)
+    transfer_orbit.orbit(axis[0], axis[1], axis[2], axis[3], axis[4], origin.orbited_body)
     
     
     
@@ -465,6 +560,7 @@ def planetary_rendezvous():
 def solve():
     return 0
 
+
 start_of_analysis = param("time start")
 #second, minute, hour, day, month, year
 start_of_analysis.set_time(Time('2023-01-01T00:00:00', format = 'isot'))
@@ -477,16 +573,24 @@ Sun.body(M_sun.value)
 Earth = param("Earth")
 Earth.body(M_earth.value)
 epoch_earth = Time(2000.0, format = 'jyear')
-#  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
-Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617, Time('J2000.0', format = 'jyear_str').mjd)#365.256 #, epoch_earth.mjd
+#  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD], ascending_node [deg]
+Earth.orbit(152100000, 147095000, 0.0167086, 0, 0, Sun, 358.617, Time('J2000.0', format = 'jyear_str').mjd, 0)#365.256 #, epoch_earth.mjd
 
 Earth.set_time(Time('2004-05-12T14:45:30', format = 'isot'))
 asteroid_1996FG3 = param("1996FG3")
-asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32, 59600.0) #, 59600.0
+#  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD], ascending_node [deg]
+asteroid_1996FG3.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32, 59600.0, 299.6764) #, 59600.0
 asteroid_1996FG3.set_time(Time('2004-05-12T14:45:30', format = 'isot'))
+print(asteroid_1996FG3.position_vector())
 
+'''
+asteroid_test = param("1996FG3")
+#  apoapsis[km], periapsis[km], eccentricity[-], inclination[deg], arg_of_periapsis [deg], orbited_body, mean_anomaly[deg], epoch_MJD [MJD]
+asteroid_test.orbit(212728172.12260202, 102474541.42333502, 0.35, 2, 24.08, Sun, 202.32, 59600.0) #, 59600.0
+asteroid_test.set_time(Time('2004-07-12T14:45:30', format = 'isot'))
 
-
+get_2D_ellipse_parameters_from_3D_points(asteroid_1996FG3,asteroid_test)
+'''
 
 transfer_to_massles_body(Time('2004-05-12T14:45:30', format = 'isot'),Time('2008-05-12T14:45:30', format = 'isot'), Earth, asteroid_1996FG3)
 
